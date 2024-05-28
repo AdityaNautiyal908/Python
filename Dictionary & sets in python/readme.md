@@ -12,4 +12,6 @@
 ># Set Method
 >![Set Method](image-4.png) <br><br>
 > Sets element are immutable(non-changeable)but set is mutable(changeable)
+> Also we can't pass dictionary(mutable) or list(mutable) 
+> We can pass tuple(immutable)
 

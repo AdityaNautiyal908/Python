@@ -5,7 +5,22 @@
 
 # Empty set syntax
 collection = set()
-print(type(collection))
 
 # set Method
 # Add
+# collection.add(1)
+# collection.add(2)
+# collection.add(3)
+# collection.add(("luffy","time","pokemon"))
+# collection.clear()
+# print(len(collection))
+
+# collection = {"hello", "pokemon", "Ash", "pikachu"}
+# # Remove a random element from set
+# print(collection.pop())
+
+set1 = {1,2,3}
+set2 = {2,3,4}
+
+print(set1.union(set2)) # 1,2,3,4
+print(set1.intersection(set2)) # 2,3
