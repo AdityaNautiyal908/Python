@@ -4,7 +4,7 @@
 > * They are unordered, mutable(changeable) & don't allow duplicate keys <br> <br>
 ![Syntax](image.png) <br>
 ![Nested](image-1.png) <br>
-![Methods](image-2.png)
+![Methods](image-2.png) <br>
 
 # Set in Python
 ![Set](image-3.png)
