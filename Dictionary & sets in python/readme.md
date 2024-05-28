@@ -10,6 +10,6 @@
 >![Set](image-3.png) <br>
 >
 ># Set Method
->![Set Method](image-4.png)
+>![Set Method](image-4.png) <br>
 > Sets element are immutable(non-changeable)but set is mutable(changeable)
 
