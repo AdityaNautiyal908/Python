@@ -7,5 +7,9 @@
 ![Methods](image-2.png) <br>
 
 # Set in Python
-![Set](image-3.png)
+![Set](image-3.png) <br>
+
+# Set Method
+![Set Method](image-4.png)
+> Set Method are immutable(not-changeable)but set is mutable(changeable)
 

@@ -23,6 +23,5 @@ student = {
 # print(student.keys())
 
 # insert the specified items to the dictionary
-student.update({"city" : "dehardun"})
-
-print(student)
+# student.update({"city" : "dehardun"})
+# print(student)
