@@ -71,9 +71,30 @@
 
 # WAP to check if a number is multiple of 7 or not
 
-num = int (input("Enter the number : "))
+# num = int (input("Enter the number : "))
 
-if(num % 7 == 0):
-    print(num,"is multiple of 7")
-else:
-    print(num,"Not a multiple of 7")
+# if(num % 7 == 0):
+#     print(num,"is multiple of 7")
+# else:
+#     print(num,"Not a multiple of 7")
+
+# Write a program to take marks in 3 subject and print the average of this marks
+
+maths = 50
+chemistry = 50
+hindi = 50
+
+Total = (maths + chemistry + hindi) / 3
+
+print("Average marks of three subject: ",Total)
+
+
+# write a program to add two number
+num1 = 1
+num2 = 2
+
+total = num1 + num2
+print("Total : ",total)
+
+
+
