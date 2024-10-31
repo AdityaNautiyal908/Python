@@ -1,17 +1,18 @@
 import re
 
-def validate_phone_number(phone_number):
+def valid_phone_number(number):
     pattern = r'^\d{3}-\d{3}-\d{4}$'
 
-    if re.match(pattern,phone_number):
+    if re.match(pattern,number):
         return True
     else:
         return False
-    
-phone_number = input("Enter the phone number in the format XXX-XXX-XXXX : ")
 
-if validate_phone_number(phone_number):
-    print("Phone number is valid")
+
+number = input("Enter the number in this format (XXX-XXX-XXXX) : ")
+
+if valid_phone_number(number):
+    print("Valid phone number")
 
 else:
-    print("Phone number is invalid")
+    print("Valid phone number")
