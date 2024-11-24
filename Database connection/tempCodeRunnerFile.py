@@ -1,50 +1,48 @@
-def menu():
-    print("""
-        1. Add Task
-        2. View Tasks
-        3. Mark Task are Completed
-        4. Delete Task
-        5. Exit
-""")
+import random
 
-def main_menu():
+# Function to start the game
+def start_game():
+    print("+--------------------------------------------+")
+    print("|            Start the Game                 |")
+    print("+--------------------------------------------+")
+
     while True:
-        try:
-            menu()
-            choice = input("Enter your choice : ")
-            if choice.isdigit():
-                choice = int(choice)
-                if choice == 1:
-                    add_Task()
-                elif choice == 2:
-                    view_Tasks()
-                elif choice == 3:
-                    pass
-                elif choice == 4:
-                    pass
-                elif choice == 5:
-                    print("Exiting program")
-                    break
+        # Generate a random number between 1 and 10
+        game_number = random.randint(1, 10)
+        print("\nWelcome to the Number Guessing Game!")
+        print("I have selected a random number between 1 and 10.")
+        
+        # While the game is running, continue prompting the user
+        while True:
+            # Prompt the user for input (their guess)
+            guess = input("Enter your guess: ")
+
+            # Check if the user input is a valid number
+            if guess.isdigit():
+                guess = int(guess)
+
+                # Check if the guess is correct
+                if guess == game_number:
+                    print("You guessed it right!")
+                    break  # Exit the loop after the correct guess
+
+                elif guess < game_number:
+                    print("Too low, try again!")
                 else:
-                    print("Invalid choice! Please choose a number between 1 and 5.")
-            
+                    print("Too high, try again!")
+
             else:
                 print("Please enter a valid number.")
-            
-        except Exception as e:
-            print(f"Error : {e}")
-            
-tasks = []
-def add_Task():
-    task = input("Enter a new task: ")
-    tasks.append(task)
 
-    print(f"Task '{task}' has been added")
+        # Ask if the user wants to play again (Yes/No)
+        play_again = input("Do you want to play again? (y/n): ").lower()
 
-def view_Tasks():
-    print("Your task do to")
-    for i,task in enumerate(tasks,start=1):
-        print(f"{i}. {task}")
+        if play_again != 'y':
+            print("+-----------------------+")
+            print("|     End the game      |")
+            print("+-----------------------+")
+            break  # Exit the outer loop and end the game
 
-main_menu()
+# Start the game
+start_game()
 
