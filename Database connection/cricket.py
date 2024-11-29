@@ -41,55 +41,62 @@ class CricketScoreboard:
         self.lbltitle = tk.Label(self.root, bd=20, relief=RIDGE, text="CRICKET SCORE BOARD", bg="black", fg="white", font=("Times New Roman", 30, "bold"))
         self.lbltitle.pack(side=TOP, fill=X)
 
-        # Create a frame for the input fields and buttons
-        frame = tk.Frame(self.root)
-        frame.pack(pady=20)
+        # Frame for content (left side: input, right side: score display)
+        dataframe = tk.Frame(self.root, bd=20, relief=RIDGE, bg="lightblue")
+        dataframe.place(x=0, y=100, width=screen_width-20, height=600)
 
-        # Use a grid layout to organize the widgets better
-        frame.grid_columnconfigure(0, weight=1, minsize=150)
-        frame.grid_columnconfigure(1, weight=2, minsize=250)
+        # Left frame for user input
+        left_frame = tk.LabelFrame(dataframe, bd=5, relief=RIDGE, font=("Helvetica", 15, "bold"), text="Team & Match Details")
+        left_frame.place(x=5, y=20, width=700, height=550)
 
-        # Team Name
-        self.team_label = tk.Label(frame, text="Enter Team Name:", font=("Helvetica", 12))
+        # Right frame for score display and match details
+        right_frame = tk.LabelFrame(dataframe, bd=5, relief=RIDGE, font=("Helvetica", 15, "bold"), text="Match Details & Score")
+        right_frame.place(x=720, y=20, width=700, height=550)
+
+        # Left side input fields and buttons
+        self.team_label = tk.Label(left_frame, text="Enter Team Name:", font=("Helvetica", 12))
         self.team_label.grid(row=0, column=0, pady=10, padx=20, sticky="w")
         
-        self.team_entry = tk.Entry(frame, width=40, font=("Helvetica", 12))
+        self.team_entry = tk.Entry(left_frame, width=40, font=("Helvetica", 12))
         self.team_entry.grid(row=0, column=1, pady=10, padx=20, sticky="w")
 
         # Total Overs
-        self.overs_label = tk.Label(frame, text="Enter Total Overs:", font=("Helvetica", 12))
+        self.overs_label = tk.Label(left_frame, text="Enter Total Overs:", font=("Helvetica", 12))
         self.overs_label.grid(row=1, column=0, pady=10, padx=20, sticky="w")
         
-        self.overs_entry = tk.Entry(frame, width=40, font=("Helvetica", 12))
+        self.overs_entry = tk.Entry(left_frame, width=40, font=("Helvetica", 12))
         self.overs_entry.grid(row=1, column=1, pady=10, padx=20, sticky="w")
 
-        # Buttons for stage 1
-        self.start_button = tk.Button(self.root, text="Start Match", command=self.set_team_details, width=30, height=2, font=("Helvetica", 12))
-        self.start_button.pack(pady=10)
+        # Button for starting match
+        self.start_button = tk.Button(left_frame, text="Start Match", command=self.set_team_details, width=20, height=2, font=("Helvetica", 12))
+        self.start_button.grid(row=2, column=0, columnspan=2, pady=10)
 
-        # Labels to show match details
-        self.match_label = tk.Label(self.root, text="Match ID: Not Started", font=("Helvetica", 12))
+        # Button to delete selected record
+        self.delete_button = tk.Button(left_frame, text="Delete Selected Record", command=self.delete_selected_record, width=20, height=2, font=("Helvetica", 12))
+        self.delete_button.grid(row=3, column=0, columnspan=2, pady=10)
+
+        # Right side match details and score
+        self.match_label = tk.Label(right_frame, text="Match ID: Not Started", font=("Helvetica", 12))
         self.match_label.pack(pady=10)
 
         # Now, create score-related fields for stage 2 (hidden initially)
-        self.runs_label = tk.Label(self.root, text="Enter Runs Scored (1,2,3,4, or 6):", font=("Helvetica", 12))
+        self.runs_label = tk.Label(right_frame, text="Enter Runs Scored (1,2,3,4, or 6):", font=("Helvetica", 12))
         
-        # Frame for runs entry and the update button (Grid layout for horizontal alignment)
-        self.runs_frame = tk.Frame(self.root)
+        self.runs_frame = tk.Frame(right_frame)
         self.runs_entry = tk.Entry(self.runs_frame, width=15, font=("Helvetica", 12))
         self.update_run_button = tk.Button(self.runs_frame, text="Update Run", command=self.update_score, font=("Helvetica", 12))
 
-        self.wicket_label = tk.Label(self.root, text="Was a Wicket Taken? (yes/no):", font=("Helvetica", 12))
-        self.wicket_entry = tk.Entry(self.root, width=40, font=("Helvetica", 12))
-        self.turn_label = tk.Label(self.root, text="Current Player Turn: 1", font=("Helvetica", 12))
-        self.ball_count_label = tk.Label(self.root, text="Balls Played: 0", font=("Helvetica", 12))
+        self.wicket_label = tk.Label(right_frame, text="Was a Wicket Taken? (yes/no):", font=("Helvetica", 12))
+        self.wicket_entry = tk.Entry(right_frame, width=40, font=("Helvetica", 12))
+        self.turn_label = tk.Label(right_frame, text="Current Player Turn: 1", font=("Helvetica", 12))
+        self.ball_count_label = tk.Label(right_frame, text="Balls Played: 0", font=("Helvetica", 12))
 
         # Buttons for score updating (hidden initially)
-        self.update_score_button = tk.Button(self.root, text="Update Score", command=self.update_score, width=30, height=2, font=("Helvetica", 12))
-        self.display_score_button = tk.Button(self.root, text="Display Score", command=self.display_score, width=30, height=2, font=("Helvetica", 12))
+        self.update_score_button = tk.Button(right_frame, text="Update Score", command=self.update_score, width=20, height=2, font=("Helvetica", 12))
+        self.display_score_button = tk.Button(right_frame, text="Display Score", command=self.display_score, width=20, height=2, font=("Helvetica", 12))
 
         # Create the treeview for displaying scores
-        self.tree = ttk.Treeview(self.root, columns=("Match ID", "Team Name", "Total Overs", "Score", "Wickets", "Overs"), show="headings", height=8)
+        self.tree = ttk.Treeview(right_frame, columns=("Match ID", "Team Name", "Total Overs", "Score", "Wickets", "Overs"), show="headings", height=8)
         self.tree.pack(pady=20, padx=20, fill=BOTH)
 
         # Set up the column headings
@@ -226,6 +233,28 @@ class CricketScoreboard:
         for row in rows:
             self.tree.insert("", "end", values=row)
 
+    def delete_selected_record(self):
+        # Get selected record from treeview
+        selected_item = self.tree.selection()
+
+        if not selected_item:
+            messagebox.showerror("No Selection", "Please select a record to delete.")
+            return
+
+        # Get the match_id of the selected record
+        match_id = self.tree.item(selected_item)["values"][0]
+
+        # Confirm deletion
+        confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete match ID: {match_id}?")
+        
+        if confirm:
+            # Delete from the database
+            self.cursor.execute("DELETE FROM match_scores WHERE match_id = %s", (match_id,))
+            self.conn.commit()
+
+            # Refresh the table
+            self.refresh_table()
+
 def main():
     root = tk.Tk()
     scoreboard = CricketScoreboard(root)
@@ -234,3 +263,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -5,6 +5,7 @@ from tkcalendar import DateEntry
 from tkinter import *
 import os
 from dotenv import load_dotenv
+import re  
 
 load_dotenv()
 
@@ -17,7 +18,6 @@ class MedicalRecordApp:
         # Establish the database connection
         password = os.getenv("DB_PASSWORD")
         self.conn = myConn.connect(
-            
             host="localhost",  # or your MySQL server IP
             user="root",  # MySQL username
             password=password,  # MySQL password
@@ -118,6 +118,14 @@ class MedicalRecordApp:
         for row in rows:
             self.tree.insert("", "end", values=row)
 
+    # Phone number validation function
+    def validate_phone_number(self, phone_number):
+        # Regex to check if the phone number is exactly 10 digits
+        if re.match(r'^\d{10}$', phone_number):
+            return True
+        else:
+            return False
+
     def add_patient(self):
         # Get data from form
         first_name = self.first_name_entry.get()
@@ -133,6 +141,11 @@ class MedicalRecordApp:
         # Validation
         if not first_name or not last_name or not dob or not gender:
             messagebox.showerror("Error", "All fields are required!")
+            return
+
+        # Validate phone number
+        if not self.validate_phone_number(phone):
+            messagebox.showerror("Error", "Phone number must be exactly 10 digits.")
             return
 
         # Insert into the database
@@ -166,6 +179,11 @@ class MedicalRecordApp:
         disease = self.disease_entry.get()
         treatment = self.treatment_entry.get()
         last_visit = self.last_visit_entry.get_date()  # Get the date from the date picker
+
+        # Validate phone number
+        if not self.validate_phone_number(phone):
+            messagebox.showerror("Error", "Phone number must be exactly 10 digits.")
+            return
 
         # SQL update query
         query = """

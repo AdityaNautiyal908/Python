@@ -1,2 +1,2 @@
-example_label = tk.Label(dataframe, text="Enter Team Details", font=("Arial", 14))
-example_label.pack(pady=20)
+lblframe = tk.Frame(root,bd=10,relief=RIDGE,bg="blue")
+# lblframe.place(x=0,y=150,pady=10,padx=10)
