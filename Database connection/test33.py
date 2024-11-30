@@ -1,6 +1,5 @@
 import random
 options = ("rock","paper","scissor")
-
 running = True
 
 while running:

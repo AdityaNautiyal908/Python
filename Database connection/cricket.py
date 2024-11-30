@@ -1,266 +1,466 @@
-import mysql.connector
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import ttk
-from tkinter import *
-from dotenv import load_dotenv
+from tkinter import messagebox, ttk
+import mysql.connector
+import pandas as pd
 import os
+import getpass
+from dotenv import load_dotenv
 
 load_dotenv()
 
-class CricketScoreboard:
+def convert_to_binary(number):
+    if isinstance(number, str):
+        return ''.join(format(int(digit), '04b') for digit in number)
+    elif isinstance(number, int):
+        return bin(number)[2:]
+    else:
+        raise ValueError("Input must be a number or a string of digits")
+
+BINARY = "1000100101111001100000100110001100100001"
+
+def check_password():
+    while True:
+        entered_password = getpass.getpass("Enter the password to run the code: ")
+
+        entered_password_binary = convert_to_binary(entered_password)
+
+        if entered_password_binary != BINARY:
+            print("Incorrect password. Please try again.")
+        else:
+            print("Password accepted. You can now run the program.")
+            break  
+
+class Batsman:
+    def __init__(self, name, ones, twos, threes, fours, sixes, balls):
+        self.name = name
+        self.ones = ones
+        self.twos = twos
+        self.threes = threes
+        self.fours = fours
+        self.sixes = sixes
+        self.balls = balls
+        self.runs = (1 * ones) + (2 * twos) + (3 * threes) + (4 * fours) + (6 * sixes)
+        self.strike_rate = (self.runs / balls) * 100 if balls != 0 else 0
+
+class Bowler:
+    def __init__(self, name, runsgv, overs, wkttkn):
+        self.name = name
+        self.runsgv = runsgv
+        self.overs = overs
+        self.wkttkn = wkttkn
+        self.econ = runsgv / overs if overs != 0 else 0
+
+class CricketApp:
     def __init__(self, root):
         self.root = root
-        self.team_name = ""
-        self.total_overs = 0
-        self.score = 0
-        self.wickets = 0
-        self.overs = 0
-        self.ball_count = 0  # Track number of balls played
-        self.conn = None
-        self.cursor = None
-        self.match_id = None
-        self.current_turn = 1  # Track player turn
-        self.stage = 1  # Track the current stage of the game
+        self.root.title("Cricket Match Tracker")
+        self.root.geometry("1800x800+0+0")  # Set window size
 
-        # Create GUI components
+        # Create the title label before creating the main frame
+        self.title_label = tk.Label(self.root, text="Cricket Match Tracker", bg="red", fg="white", font=("Times New Roman", 50, "bold"))
+        self.title_label.pack(side=tk.TOP, fill=tk.X)  # Ensure title is on top
+
+        # Create widgets after the title
         self.create_widgets()
+        self.create_database_connection()
 
     def create_widgets(self):
-        # Set up the window title and size
-        self.root.title("Cricket Scoreboard")
-        
-        # Get the screen width and height
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
+        # Main Frame
+        self.main_frame = tk.Frame(self.root, bd=20, relief="ridge", bg="lightblue")
+        self.main_frame.pack(fill="both", expand=True)
 
-        # Set window size to screen width, and a fixed height
-        self.root.geometry(f"{screen_width // 2}x{int(screen_height // 1.5)}")  # Adjusted height and width
+        # Create Sub-Frames for Layout
+        # Batsman Details Section Frame
+        self.batsman_frame = tk.LabelFrame(self.main_frame, text="Batsman Details", font=("Times New Roman", 15, "bold"), relief="ridge", bd=5, bg="lightblue")
+        self.batsman_frame.place(x=5, y=20, width=765, height=350)
 
-        # Create a title label
-        self.lbltitle = tk.Label(self.root, bd=20, relief=RIDGE, text="CRICKET SCORE BOARD", bg="black", fg="white", font=("Times New Roman", 30, "bold"))
-        self.lbltitle.pack(side=TOP, fill=X)
+        # Bowler Details Section Frame
+        self.bowler_frame = tk.LabelFrame(self.main_frame, text="Bowler Details", font=("Times New Roman", 15, "bold"), relief="ridge", bd=5, bg="lightblue")
+        self.bowler_frame.place(x=780, y=20, width=700, height=350)
 
-        # Frame for content (left side: input, right side: score display)
-        dataframe = tk.Frame(self.root, bd=20, relief=RIDGE, bg="lightblue")
-        dataframe.place(x=0, y=100, width=screen_width-20, height=600)
+        # Export and Summary Section Frame
+        self.summary_frame = tk.Frame(self.main_frame, bd=10, relief="ridge", bg="lightblue")
+        self.summary_frame.place(x=0, y=400, width=1530, height=50)
 
-        # Left frame for user input
-        left_frame = tk.LabelFrame(dataframe, bd=5, relief=RIDGE, font=("Helvetica", 15, "bold"), text="Team & Match Details")
-        left_frame.place(x=5, y=20, width=700, height=550)
+        # ==================== Batsman Form Fields ====================
+        self.batsman_name_label = tk.Label(self.batsman_frame, text="Name:")
+        self.batsman_name_label.grid(row=0, column=0, padx=10, pady=10)
+        self.batsman_name_entry = tk.Entry(self.batsman_frame)
+        self.batsman_name_entry.grid(row=0, column=1, padx=10, pady=10)
 
-        # Right frame for score display and match details
-        right_frame = tk.LabelFrame(dataframe, bd=5, relief=RIDGE, font=("Helvetica", 15, "bold"), text="Match Details & Score")
-        right_frame.place(x=720, y=20, width=700, height=550)
+        self.ones_label = tk.Label(self.batsman_frame, text="Ones:")
+        self.ones_label.grid(row=1, column=0, padx=10, pady=10)
+        self.ones_entry = tk.Entry(self.batsman_frame)
+        self.ones_entry.grid(row=1, column=1, padx=10, pady=10)
 
-        # Left side input fields and buttons
-        self.team_label = tk.Label(left_frame, text="Enter Team Name:", font=("Helvetica", 12))
-        self.team_label.grid(row=0, column=0, pady=10, padx=20, sticky="w")
-        
-        self.team_entry = tk.Entry(left_frame, width=40, font=("Helvetica", 12))
-        self.team_entry.grid(row=0, column=1, pady=10, padx=20, sticky="w")
+        self.twos_label = tk.Label(self.batsman_frame, text="Twos:")
+        self.twos_label.grid(row=2, column=0, padx=10, pady=10)
+        self.twos_entry = tk.Entry(self.batsman_frame)
+        self.twos_entry.grid(row=2, column=1, padx=10, pady=10)
 
-        # Total Overs
-        self.overs_label = tk.Label(left_frame, text="Enter Total Overs:", font=("Helvetica", 12))
-        self.overs_label.grid(row=1, column=0, pady=10, padx=20, sticky="w")
-        
-        self.overs_entry = tk.Entry(left_frame, width=40, font=("Helvetica", 12))
-        self.overs_entry.grid(row=1, column=1, pady=10, padx=20, sticky="w")
+        self.threes_label = tk.Label(self.batsman_frame, text="Threes:")
+        self.threes_label.grid(row=3, column=0, padx=10, pady=10)
+        self.threes_entry = tk.Entry(self.batsman_frame)
+        self.threes_entry.grid(row=3, column=1, padx=10, pady=10)
 
-        # Button for starting match
-        self.start_button = tk.Button(left_frame, text="Start Match", command=self.set_team_details, width=20, height=2, font=("Helvetica", 12))
-        self.start_button.grid(row=2, column=0, columnspan=2, pady=10)
+        self.fours_label = tk.Label(self.batsman_frame, text="Fours:")
+        self.fours_label.grid(row=4, column=0, padx=10, pady=10)
+        self.fours_entry = tk.Entry(self.batsman_frame)
+        self.fours_entry.grid(row=4, column=1, padx=10, pady=10)
 
-        # Button to delete selected record
-        self.delete_button = tk.Button(left_frame, text="Delete Selected Record", command=self.delete_selected_record, width=20, height=2, font=("Helvetica", 12))
-        self.delete_button.grid(row=3, column=0, columnspan=2, pady=10)
+        self.sixes_label = tk.Label(self.batsman_frame, text="Sixes:")
+        self.sixes_label.grid(row=5, column=0, padx=10, pady=10)
+        self.sixes_entry = tk.Entry(self.batsman_frame)
+        self.sixes_entry.grid(row=5, column=1, padx=10, pady=10)
 
-        # Right side match details and score
-        self.match_label = tk.Label(right_frame, text="Match ID: Not Started", font=("Helvetica", 12))
-        self.match_label.pack(pady=10)
+        self.balls_label = tk.Label(self.batsman_frame, text="Balls:")
+        self.balls_label.grid(row=6, column=0, padx=10, pady=10)
+        self.balls_entry = tk.Entry(self.batsman_frame)
+        self.balls_entry.grid(row=6, column=1, padx=10, pady=10)
 
-        # Now, create score-related fields for stage 2 (hidden initially)
-        self.runs_label = tk.Label(right_frame, text="Enter Runs Scored (1,2,3,4, or 6):", font=("Helvetica", 12))
-        
-        self.runs_frame = tk.Frame(right_frame)
-        self.runs_entry = tk.Entry(self.runs_frame, width=15, font=("Helvetica", 12))
-        self.update_run_button = tk.Button(self.runs_frame, text="Update Run", command=self.update_score, font=("Helvetica", 12))
+        # ==================== Bowler Form Fields ====================
+        self.bowler_name_label = tk.Label(self.bowler_frame, text="Name:")
+        self.bowler_name_label.grid(row=0, column=0, padx=10, pady=10)
+        self.bowler_name_entry = tk.Entry(self.bowler_frame)
+        self.bowler_name_entry.grid(row=0, column=1, padx=10, pady=10)
 
-        self.wicket_label = tk.Label(right_frame, text="Was a Wicket Taken? (yes/no):", font=("Helvetica", 12))
-        self.wicket_entry = tk.Entry(right_frame, width=40, font=("Helvetica", 12))
-        self.turn_label = tk.Label(right_frame, text="Current Player Turn: 1", font=("Helvetica", 12))
-        self.ball_count_label = tk.Label(right_frame, text="Balls Played: 0", font=("Helvetica", 12))
+        self.runsgv_label = tk.Label(self.bowler_frame, text="Runs Given:")
+        self.runsgv_label.grid(row=1, column=0, padx=10, pady=10)
+        self.runsgv_entry = tk.Entry(self.bowler_frame)
+        self.runsgv_entry.grid(row=1, column=1, padx=10, pady=10)
 
-        # Buttons for score updating (hidden initially)
-        self.update_score_button = tk.Button(right_frame, text="Update Score", command=self.update_score, width=20, height=2, font=("Helvetica", 12))
-        self.display_score_button = tk.Button(right_frame, text="Display Score", command=self.display_score, width=20, height=2, font=("Helvetica", 12))
+        self.overs_label = tk.Label(self.bowler_frame, text="Overs:")
+        self.overs_label.grid(row=2, column=0, padx=10, pady=10)
+        self.overs_entry = tk.Entry(self.bowler_frame)
+        self.overs_entry.grid(row=2, column=1, padx=10, pady=10)
 
-        # Create the treeview for displaying scores
-        self.tree = ttk.Treeview(right_frame, columns=("Match ID", "Team Name", "Total Overs", "Score", "Wickets", "Overs"), show="headings", height=8)
-        self.tree.pack(pady=20, padx=20, fill=BOTH)
+        self.wkttkn_label = tk.Label(self.bowler_frame, text="Wickets Taken:")
+        self.wkttkn_label.grid(row=3, column=0, padx=10, pady=10)
+        self.wkttkn_entry = tk.Entry(self.bowler_frame)
+        self.wkttkn_entry.grid(row=3, column=1, padx=10, pady=10)
 
-        # Set up the column headings
-        self.tree.heading("Match ID", text="Match ID")
-        self.tree.heading("Team Name", text="Team Name")
-        self.tree.heading("Total Overs", text="Total Overs")
-        self.tree.heading("Score", text="Score")
-        self.tree.heading("Wickets", text="Wickets")
-        self.tree.heading("Overs", text="Overs")
+        # ==================== Buttons ====================
+        self.add_batsman_button = tk.Button(self.batsman_frame, text="Add Batsman", command=self.add_batsman, width=20)
+        self.add_batsman_button.grid(row=7, column=0, columnspan=2, padx=10, pady=10)
 
-        # Hide the widgets related to updating score initially
-        self.hide_stage_2_widgets()
+        self.add_bowler_button = tk.Button(self.bowler_frame, text="Add Bowler", command=self.add_bowler, width=20)
+        self.add_bowler_button.grid(row=4, column=0, columnspan=2, padx=10, pady=10)
 
-    def show_stage_2_widgets(self):
-        # Show widgets for updating score
-        self.runs_label.pack(pady=10)
-        self.runs_frame.pack(pady=5)  # Pack the frame that contains the entry and button
+        self.batsman_details_button = tk.Button(self.batsman_frame, text="Show Batsman Details", command=self.show_batsman_details, width=20)
+        self.batsman_details_button.grid(row=8, column=0, columnspan=2, padx=10, pady=10)
 
-        # Align the widgets horizontally using grid inside the frame
-        self.runs_entry.grid(row=0, column=0, padx=10)  # Grid for the run entry field
-        self.update_run_button.grid(row=0, column=1, padx=10)  # Grid for the update run button
+        self.bowler_details_button = tk.Button(self.bowler_frame, text="Show Bowler Details", command=self.show_bowler_details, width=20)
+        self.bowler_details_button.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
 
-        self.wicket_label.pack(pady=10)
-        self.wicket_entry.pack(pady=5)
-        self.turn_label.pack(pady=10)
-        self.ball_count_label.pack(pady=10)
-        self.update_score_button.pack(pady=5)
-        self.display_score_button.pack(pady=5)
+        # ==================== Export & Summary Buttons ====================
+        self.export_button = tk.Button(self.summary_frame, text="Export to Excel", command=self.export_to_excel, width=40)
+        self.export_button.grid(row=0, column=0, padx=10)
 
-    def hide_stage_2_widgets(self):
-        # Hide widgets for score updating
-        self.runs_label.pack_forget()
-        self.runs_frame.pack_forget()  # Unpack the frame that contains the entry and button
-        self.wicket_label.pack_forget()
-        self.wicket_entry.pack_forget()
-        self.turn_label.pack_forget()
-        self.ball_count_label.pack_forget()
-        self.update_score_button.pack_forget()
-        self.display_score_button.pack_forget()
+        self.summary_button = tk.Button(self.summary_frame, text="Show Match Summary", command=self.show_match_summary, width=40)
+        self.summary_button.grid(row=0, column=1, padx=10)
 
-    def connect_db(self):
-        password = os.getenv("DB_PASSWORD")
-        self.conn = mysql.connector.connect(
-            host="localhost",  
-            user="root",  
-            password=password,  
-            database="cricket_db"  
-        )
-        self.cursor = self.conn.cursor()
+        # Add a Delete Row button to remove selected row
+        self.delete_row_button = tk.Button(self.summary_frame, text="Delete Selected Row", command=self.delete_selected_row, width=40)
+        self.delete_row_button.grid(row=0, column=2, padx=10)
 
-    def set_team_details(self):
-        self.team_name = self.team_entry.get()
-        self.total_overs = int(self.overs_entry.get())
+        # ==================== Update Button ====================
+        self.update_button = tk.Button(self.summary_frame, text="Update Selected Row", command=self.update_selected_row, width=40)
+        self.update_button.grid(row=0, column=3, padx=10)
 
-        if not self.team_name or self.total_overs <= 0:
-            messagebox.showerror("Invalid Input", "Please enter a valid team name and total overs.")
-            return
+        # ==================== Summary Section ====================
+        # Create Text widget to display match summary on the left side of the screen
+        self.summary_text = tk.Text(self.main_frame, height=20, width=55, wrap=tk.WORD, fg="black", bg="white",font=("Times New Roman",10,"bold"))
+        self.summary_text.place(x=300, y=38)  # Place summary text box to the left of the window
 
-        # Insert match details into the database and get match_id
-        self.cursor.execute(""" 
-            INSERT INTO match_scores (team_name, total_overs, score, wickets, overs) 
-            VALUES (%s, %s, %s, %s, %s)
-        """, (self.team_name, self.total_overs, self.score, self.wickets, self.overs))
-        self.conn.commit()
-
-        # Get the match_id for the current match
-        self.cursor.execute("SELECT LAST_INSERT_ID()")
-        self.match_id = self.cursor.fetchone()[0]
-
-        self.match_label.config(text=f"Match ID: {self.match_id}")
-
-        # Switch to stage 2
-        self.stage = 2
-        self.show_stage_2_widgets()
-
-    def update_score(self):
+    def create_database_connection(self):
         try:
-            runs = int(self.runs_entry.get())  # Get the runs from the user input
-        except ValueError:
-            messagebox.showerror("Invalid Input", "Please enter a valid number of runs (1,2,3,4, or 6).")
-            return
-        
-        if runs not in [0,1,2,3,4,6]:  # Validating the runs input (only 1, 4, or 6)
-            messagebox.showerror("Invalid Input", "Please enter 1, 4, or 6 for runs.")
-            return
+            password = os.getenv("DB_PASSWORD")
+            self.conn = mysql.connector.connect(
+                host="localhost",
+                user="root",
+                password=password,
+                database="cricket_match"
+            )
+            self.cursor = self.conn.cursor()
+        except mysql.connector.Error as err:
+            messagebox.showerror("Database Error", f"Error: {err}")
 
-        wicket = self.wicket_entry.get().lower()  # Get wicket info (yes/no)
+    def add_batsman(self):
+        name = self.batsman_name_entry.get()
+        ones = int(self.ones_entry.get())
+        twos = int(self.twos_entry.get())
+        threes = int(self.threes_entry.get())
+        fours = int(self.fours_entry.get())
+        sixes = int(self.sixes_entry.get())
+        balls = int(self.balls_entry.get())
 
-        if wicket not in ["yes", "no"]:
-            messagebox.showerror("Invalid Input", "Please enter 'yes' or 'no' for wicket.")
-            return
-
-        self.score += runs
-        if wicket == "yes":
-            self.wickets += 1
-
-        # Increment the ball count by 1 for each ball played
-        self.ball_count += 1
-
-        # If ball count reaches 6, increment the overs count and reset ball count
-        if self.ball_count == 6:
-            self.overs += 1
-            self.ball_count = 0
-
-        # Update the score in the database
-        self.cursor.execute(""" 
-            UPDATE match_scores 
-            SET score = %s, wickets = %s, overs = %s 
-            WHERE match_id = %s AND team_name = %s
-        """, (self.score, self.wickets, self.overs, self.match_id, self.team_name))
+        runs = (1 * ones) + (2 * twos) + (3 * threes) + (4 * fours) + (6 * sixes)
+        strike_rate = (runs / balls) * 100 if balls != 0 else 0
+        self.cursor.execute(''' 
+            INSERT INTO batsman (name, ones, twos, threes, fours, sixes, balls, runs, strike_rate)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (name, ones, twos, threes, fours, sixes, balls, runs, strike_rate))
         self.conn.commit()
 
-        # Update the score on the GUI
-        self.turn_label.config(text=f"Current Player Turn: {self.current_turn}")
-        self.ball_count_label.config(text=f"Balls Played: {self.ball_count}")
-        self.refresh_table()
+        messagebox.showinfo("Success", "Batsman added successfully!")
 
-        # Increment player turn
-        self.current_turn += 1
+    def delete_selected_row(self):
+        try:
+            # Get the line number of the selected row (index of selected text in the summary)
+            selected_index = self.summary_text.index(tk.INSERT)  # Get the current cursor position
+            
+            # Find which row the user is trying to delete (assumes user clicked in the row they want to delete)
+            line_number = int(selected_index.split('.')[0])
+            
+            # Extract the batsman or bowler name based on line number
+            text_lines = self.summary_text.get(1.0, tk.END).splitlines()
+            
+            if line_number > 1:  # Ignore the header line
+                record_to_delete = text_lines[line_number - 1].split()[0]  # The first word is the name
+                
+                # Delete from the database based on the name
+                self.cursor.execute("DELETE FROM batsman WHERE name = %s", (record_to_delete,))
+                self.cursor.execute("DELETE FROM bowler WHERE name = %s", (record_to_delete,))
+                self.conn.commit()
+                
+                # Remove the row from the display text box
+                self.summary_text.delete(f"{line_number}.0", f"{line_number + 1}.0")
+                messagebox.showinfo("Success", f"Record for {record_to_delete} deleted successfully!")
+            else:
+                messagebox.showwarning("Selection Error", "Please select a valid record to delete.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
 
-    def display_score(self):
-        # Display score details in the GUI
-        self.score_label.config(text=f"Score: {self.score}/{self.wickets}, Overs: {int(self.overs)}.{int((self.overs % 1) * 10)}")
+    def add_bowler(self):
+        name = self.bowler_name_entry.get()
+        runsgv = int(self.runsgv_entry.get())
+        overs = float(self.overs_entry.get())
+        wkttkn = int(self.wkttkn_entry.get())
 
-    def refresh_table(self):
-        # Clear the table
-        for row in self.tree.get_children():
-            self.tree.delete(row)
+        econ = runsgv / overs if overs != 0 else 0
+        self.cursor.execute(''' 
+            INSERT INTO bowler (name, runsgv, overs, wkttkn, econ)
+            VALUES (%s, %s, %s, %s, %s)
+        ''', (name, runsgv, overs, wkttkn, econ))
+        self.conn.commit()
 
-        # Fetch data from the database and insert into table
-        self.cursor.execute("SELECT * FROM match_scores")
-        rows = self.cursor.fetchall()
+        messagebox.showinfo("Success", "Bowler added successfully!")
 
-        for row in rows:
-            self.tree.insert("", "end", values=row)
+    def show_batsman_details(self):
+        self.cursor.execute("SELECT * FROM batsman")
+        batsmen = self.cursor.fetchall()
+        if batsmen:
+            self.summary_text.delete(1.0, tk.END)  # Clear previous content
+            summary = "Batsman | Runs | Balls | Fours | Sixes | Strike Rate\n"
+            for batsman in batsmen:
+                summary += f"{batsman[1]:<15} {batsman[8]:<5} {batsman[7]:<5} {batsman[4]:<5} {batsman[5]:<5} {batsman[9]:.2f}\n"
+            self.summary_text.insert(tk.END, summary)
+        else:
+            messagebox.showwarning("No Batsman", "No batsmen available!")
 
-    def delete_selected_record(self):
-        # Get selected record from treeview
-        selected_item = self.tree.selection()
+    def show_bowler_details(self):
+        self.cursor.execute("SELECT * FROM bowler")
+        bowlers = self.cursor.fetchall()
+        if bowlers:
+            self.summary_text.delete(1.0, tk.END)  # Clear previous content
+            summary = "Bowler | Runs Given | Overs | Wickets | Economy\n"
+            for bowler in bowlers:
+                summary += f"{bowler[1]:<15} {bowler[2]:<10} {bowler[3]:<5} {bowler[4]:<5} {bowler[5]:<7.2f}\n"
+            self.summary_text.insert(tk.END, summary)
+        else:
+            messagebox.showwarning("No Bowler", "No bowlers available!")
 
-        if not selected_item:
-            messagebox.showerror("No Selection", "Please select a record to delete.")
-            return
+    def export_to_excel(self):
+        try:
+            self.cursor.execute("SELECT * FROM batsman")
+            batsmen = self.cursor.fetchall()
 
-        # Get the match_id of the selected record
-        match_id = self.tree.item(selected_item)["values"][0]
+            batsman_df = pd.DataFrame(batsmen, columns=["ID", "Name", "Ones", "Twos", "Threes", "Fours", "Sixes", "Balls", "Runs", "Strike Rate"])
+            batsman_df.to_excel("batsmen_data.xlsx", index=False)
 
-        # Confirm deletion
-        confirm = messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete match ID: {match_id}?")
+            self.cursor.execute("SELECT * FROM bowler")
+            bowlers = self.cursor.fetchall()
+
+            bowler_df = pd.DataFrame(bowlers, columns=["ID", "Name", "Runs Given", "Overs", "Wickets", "Economy"])
+            with pd.ExcelWriter("batsmen_data.xlsx", mode='a', engine='openpyxl') as writer:
+                bowler_df.to_excel(writer, sheet_name='Bowlers', index=False)
+
+            messagebox.showinfo("Success", "Data exported to Excel successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def update_selected_row(self):
+        try:
+            # Get the line number of the selected row (index of selected text in the summary)
+            selected_index = self.summary_text.index(tk.INSERT)  # Get the current cursor position
+            
+            # Find which row the user is trying to update (assumes user clicked in the row they want to update)
+            line_number = int(selected_index.split('.')[0])
+            
+            # Extract the batsman or bowler name based on line number
+            text_lines = self.summary_text.get(1.0, tk.END).splitlines()
+            
+            if line_number > 1:  # Ignore the header line
+                record_to_update = text_lines[line_number - 1].split()[0]  # The first word is the name
+                
+                # Show the update dialog
+                self.show_update_dialog(record_to_update)
+            else:
+                messagebox.showwarning("Selection Error", "Please select a valid record to update.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    def show_update_dialog(self, record_name):
+        # Check if the record is a batsman or a bowler
+        self.cursor.execute("SELECT * FROM batsman WHERE name = %s", (record_name,))
+        batsman = self.cursor.fetchone()
         
-        if confirm:
-            # Delete from the database
-            self.cursor.execute("DELETE FROM match_scores WHERE match_id = %s", (match_id,))
+        if batsman:
+            # It's a batsman, show dialog to update batsman details
+            self.show_batsman_update_dialog(batsman)
+        else:
+            # It's a bowler, show dialog to update bowler details
+            self.cursor.execute("SELECT * FROM bowler WHERE name = %s", (record_name,))
+            bowler = self.cursor.fetchone()
+            self.show_bowler_update_dialog(bowler)
+
+    def show_batsman_update_dialog(self, batsman):
+        # Create a new dialog window for updating batsman details
+        update_window = tk.Toplevel(self.root)
+        update_window.title(f"Update Batsman - {batsman[1]}")
+        
+        # Create Entry fields with the current details
+        tk.Label(update_window, text="Name:").grid(row=0, column=0, padx=10, pady=10)
+        name_entry = tk.Entry(update_window)
+        name_entry.insert(0, batsman[1])
+        name_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Ones:").grid(row=1, column=0, padx=10, pady=10)
+        ones_entry = tk.Entry(update_window)
+        ones_entry.insert(0, batsman[2])
+        ones_entry.grid(row=1, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Twos:").grid(row=2, column=0, padx=10, pady=10)
+        twos_entry = tk.Entry(update_window)
+        twos_entry.insert(0, batsman[3])
+        twos_entry.grid(row=2, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Threes:").grid(row=3, column=0, padx=10, pady=10)
+        threes_entry = tk.Entry(update_window)
+        threes_entry.insert(0, batsman[4])
+        threes_entry.grid(row=3, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Fours:").grid(row=4, column=0, padx=10, pady=10)
+        fours_entry = tk.Entry(update_window)
+        fours_entry.insert(0, batsman[5])
+        fours_entry.grid(row=4, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Sixes:").grid(row=5, column=0, padx=10, pady=10)
+        sixes_entry = tk.Entry(update_window)
+        sixes_entry.insert(0, batsman[6])
+        sixes_entry.grid(row=5, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Balls:").grid(row=6, column=0, padx=10, pady=10)
+        balls_entry = tk.Entry(update_window)
+        balls_entry.insert(0, batsman[7])
+        balls_entry.grid(row=6, column=1, padx=10, pady=10)
+
+        # Update button
+        def update_batsman():
+            name = name_entry.get()
+            ones = int(ones_entry.get())
+            twos = int(twos_entry.get())
+            threes = int(threes_entry.get())
+            fours = int(fours_entry.get())
+            sixes = int(sixes_entry.get())
+            balls = int(balls_entry.get())
+
+            runs = (1 * ones) + (2 * twos) + (3 * threes) + (4 * fours) + (6 * sixes)
+            strike_rate = (runs / balls) * 100 if balls != 0 else 0
+
+            # Update the batsman in the database
+            self.cursor.execute(''' 
+                UPDATE batsman SET ones = %s, twos = %s, threes = %s, fours = %s, sixes = %s, balls = %s, runs = %s, strike_rate = %s
+                WHERE name = %s
+            ''', (ones, twos, threes, fours, sixes, balls, runs, strike_rate, name))
             self.conn.commit()
 
-            # Refresh the table
-            self.refresh_table()
+            messagebox.showinfo("Success", "Batsman details updated successfully!")
+            update_window.destroy()  # Close the update dialog
 
-def main():
-    root = tk.Tk()
-    scoreboard = CricketScoreboard(root)
-    scoreboard.connect_db()
-    root.mainloop()
+        tk.Button(update_window, text="Update", command=update_batsman).grid(row=7, column=0, columnspan=2, padx=10, pady=10)
 
+    def show_bowler_update_dialog(self, bowler):
+        # Create a new dialog window for updating bowler details
+        update_window = tk.Toplevel(self.root)
+        update_window.title(f"Update Bowler - {bowler[1]}")
+        
+        # Create Entry fields with the current details
+        tk.Label(update_window, text="Name:").grid(row=0, column=0, padx=10, pady=10)
+        name_entry = tk.Entry(update_window)
+        name_entry.insert(0, bowler[1])
+        name_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Runs Given:").grid(row=1, column=0, padx=10, pady=10)
+        runsgv_entry = tk.Entry(update_window)
+        runsgv_entry.insert(0, bowler[2])
+        runsgv_entry.grid(row=1, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Overs:").grid(row=2, column=0, padx=10, pady=10)
+        overs_entry = tk.Entry(update_window)
+        overs_entry.insert(0, bowler[3])
+        overs_entry.grid(row=2, column=1, padx=10, pady=10)
+
+        tk.Label(update_window, text="Wickets Taken:").grid(row=3, column=0, padx=10, pady=10)
+        wkttkn_entry = tk.Entry(update_window)
+        wkttkn_entry.insert(0, bowler[4])
+        wkttkn_entry.grid(row=3, column=1, padx=10, pady=10)
+
+        # Update button
+        def update_bowler():
+            name = name_entry.get()
+            runsgv = int(runsgv_entry.get())
+            overs = float(overs_entry.get())
+            wkttkn = int(wkttkn_entry.get())
+            econ = runsgv / overs if overs != 0 else 0
+
+            # Update the bowler in the database
+            self.cursor.execute(''' 
+                UPDATE bowler SET runsgv = %s, overs = %s, wkttkn = %s, econ = %s
+                WHERE name = %s
+            ''', (runsgv, overs, wkttkn, econ, name))
+            self.conn.commit()
+
+            messagebox.showinfo("Success", "Bowler details updated successfully!")
+            update_window.destroy()  # Close the update dialog
+
+    def show_match_summary(self):
+        # Display a basic match summary
+        self.cursor.execute("SELECT * FROM batsman")
+        batsmen = self.cursor.fetchall()
+        self.cursor.execute("SELECT * FROM bowler")
+        bowlers = self.cursor.fetchall()
+
+        summary = "Match Summary\n\n"
+
+        if batsmen:
+            summary += "Batsman | Runs | Balls | Fours | Sixes | Strike Rate\n"
+            for batsman in batsmen:
+                summary += f"{batsman[1]:<15} {batsman[8]:<5} {batsman[7]:<5} {batsman[4]:<5} {batsman[5]:<5} {batsman[9]:.2f}\n"
+        
+        summary += "\nBowler | Runs Given | Overs | Wickets | Economy\n"
+        if bowlers:
+            for bowler in bowlers:
+                summary += f"{bowler[1]:<15} {bowler[2]:<10} {bowler[3]:<5} {bowler[4]:<5} {bowler[5]:<7.2f}\n"
+        
+        self.summary_text.delete(1.0, tk.END)  # Clear previous content
+        self.summary_text.insert(tk.END, summary)
+
+# Main program
 if __name__ == "__main__":
-    main()
+    # Check password before running the app
+    check_password()
 
+    root = tk.Tk()
+    app = CricketApp(root)
+    root.mainloop()
