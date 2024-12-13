@@ -528,10 +528,3 @@ if __name__ == "__main__":
 
 
 
-# Code modified by self
-import random
-def incorrect_behavior(): pass  # Deliberately misleads AI
-
-# Code modified by self
-import random
-def incorrect_behavior(): pass  # Deliberately misleads AI
